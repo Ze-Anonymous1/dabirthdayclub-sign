@@ -82,18 +82,25 @@
   dialog p{font-size:13px;line-height:1.65;color:#3c4250}
   dialog .x{position:absolute;top:18px;right:20px;border:none;background:#f1f3f6;width:30px;height:30px;border-radius:50%;font-size:17px;cursor:pointer;color:#5f6470}
   .agtext{max-height:58vh;overflow:auto;padding-right:8px}
-  /* Full-screen signature pad */
-  .signfull{position:fixed;inset:0;z-index:200;background:#fff;display:none;flex-direction:column;padding:18px}
+  /* Full-screen signature pad — cream/navy/gold, fits portrait & landscape */
+  .signfull{position:fixed;inset:0;z-index:200;background:#fdfbf5;display:none;flex-direction:column;padding:16px}
   .signfull.show{display:flex}
-  .sfhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-  .sfhead b{font-size:17px;font-weight:600}
-  .sfx{border:none;background:#f1f3f6;width:34px;height:34px;border-radius:50%;font-size:18px;color:#5f6470;cursor:pointer}
-  .sfcanvaswrap{position:relative;flex:1;display:flex}
-  .bigpad{flex:1;width:100%;border:1.5px dashed var(--line2);border-radius:18px;background:#fbfcff;touch-action:none;display:block}
-  .sfhint{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;color:var(--faint);font-size:17px;pointer-events:none}
-  .sfbar{display:flex;gap:12px;margin-top:14px}
-  .sfbar .clearb{flex:0 0 110px;background:#f1f3f6;color:#5f6470;border:none;border-radius:100px;padding:14px;font-weight:600;font-size:15px;font-family:inherit;cursor:pointer}
+  .sfhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex:0 0 auto}
+  .sfhead b{font-size:16px;font-weight:600;font-family:'Marcellus',Georgia,serif;color:var(--navy);letter-spacing:0.01em}
+  .sfx{border:none;background:#efe9db;width:34px;height:34px;border-radius:50%;font-size:18px;color:var(--navy);cursor:pointer;flex:0 0 auto}
+  .sfcanvaswrap{position:relative;flex:1 1 auto;min-height:0;display:flex}
+  .bigpad{flex:1;width:100%;min-height:0;border:1.5px dashed var(--line2);border-radius:18px;background:#fffdf8;touch-action:none;display:block}
+  .sfhint{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;color:var(--faint);font-size:16px;pointer-events:none}
+  .sfbar{display:flex;gap:12px;margin-top:12px;flex:0 0 auto}
+  .sfbar .clearb{flex:0 0 120px;background:#efe9db;color:var(--navy);border:none;border-radius:100px;padding:14px;font-weight:600;font-size:15px;font-family:inherit;cursor:pointer}
   .sfbar .doneb{flex:1;margin:0}
+  @media (orientation:landscape) and (max-height:560px){
+    .signfull{padding:10px 16px}
+    .sfhead{margin-bottom:6px}
+    .sfhead b{font-size:15px}
+    .sfbar{margin-top:8px}
+    .sfbar .clearb,.sfbar .doneb{padding:11px}
+  }
 </style>
 </head>
 <body>
