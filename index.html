@@ -37,14 +37,14 @@
   .sub{font-family:'Marcellus',Georgia,serif;color:var(--muted);font-size:14.5px;margin:0 0 15px;line-height:1.5;letter-spacing:0.006em}
   .sub b{color:#15181d;font-weight:400}
   .terms{background:#f7f9fc;border:1px solid var(--line);border-radius:18px;padding:13px 17px;margin-bottom:14px}
-  .terms .h{font-family:'Marcellus SC',Georgia,serif;font-size:12.5px;font-weight:400;color:var(--muted);letter-spacing:0.13em;margin:0 0 11px}
-  .t{display:flex;gap:10px;font-size:13px;margin-bottom:9px;align-items:flex-start;line-height:1.4}
+  .terms .h{font-family:'Marcellus SC',Georgia,serif;font-size:12.5px;font-weight:400;color:#15181d;letter-spacing:0.13em;margin:0 0 11px}
+  .t{display:flex;gap:10px;font-size:13px;margin-bottom:9px;align-items:flex-start;line-height:1.4;color:var(--muted)}
   .t:last-of-type{margin-bottom:0}
   .t .ck{flex:0 0 18px;height:18px;border-radius:50%;background:var(--greenbg);display:flex;align-items:center;justify-content:center;margin-top:1px}
   .t .ck svg{width:10px;height:10px;color:var(--green)}
-  .t b{font-weight:600}
+  .t b{font-weight:500;color:inherit}
   .full{display:inline-flex;align-items:center;gap:5px;margin-top:11px;font-size:12px;font-weight:500;color:var(--accent);text-decoration:none;cursor:pointer;background:none;border:none;padding:0;font-family:inherit}
-  label.f{display:block;font-family:'Marcellus SC',Georgia,serif;font-size:12.5px;font-weight:400;color:var(--muted);letter-spacing:0.11em;margin:0 0 7px}
+  label.f{display:block;font-family:'Marcellus SC',Georgia,serif;font-size:12.5px;font-weight:400;color:#15181d;letter-spacing:0.11em;margin:0 0 7px}
   .field{margin-bottom:13px}
   input[type=text]{width:100%;font-family:'Inter';font-size:14.5px;font-weight:500;padding:10px 15px;border:1px solid var(--line2);border-radius:13px;color:var(--ink);background:#fff;transition:border .15s,box-shadow .15s}
   input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,0.14)}
@@ -63,7 +63,7 @@
   .sigcanvas-container img{max-width:92%;max-height:88px;display:block}
   .sigmeta{width:100%;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
   .sigmeta-left{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
-  .signame{font-family:'Marcellus',Georgia,serif;font-size:19px;font-weight:400;color:var(--ink);letter-spacing:0.02em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .signame{font-family:'Marcellus',Georgia,serif;font-size:19px;font-weight:400;color:#15181d;letter-spacing:0.02em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .sigdate{font-family:'Marcellus SC',Georgia,serif;font-size:11px;color:var(--faint);font-weight:400;letter-spacing:0.08em}
   .sigmeta-right{display:flex;align-items:center;gap:10px;flex:0 0 auto}
   .sigchip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--green);background:var(--greenbg);padding:6px 11px;border-radius:999px}
@@ -285,12 +285,24 @@
   const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucW5mdXl6ZWZsaGxzY3V6Zm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NjAyOTAsImV4cCI6MjA3ODQzNjI5MH0.0rTJtNh83DpzAIdVWv93WE4kTyG78dNS-sQfVZ7cN-s';
   const sb=createClient(SB_URL, SB_ANON);
   const sid=new URLSearchParams(location.search).get('s');
+  const CHECKOUT_URL='https://ynqnfuyzeflhlscuzfmp.supabase.co/functions/v1/create-checkout';
   window.signAndAgree=async function(){
     var btn=document.getElementById('signbtn');
     if(!window.sigData){ window.openSign(); return; }
     var name=(document.getElementById('signame')||{}).value||'';
     btn.textContent='Signing…'; btn.disabled=true;
-    try{ if(sid){ await sb.from('sign_sessions').update({signer_name:name,signature_png:window.sigData,status:'signed',signed_at:new Date().toISOString()}).eq('id',sid); } }catch(e){}
+    var companyId=null;
+    try{ if(sid){
+      await sb.from('sign_sessions').update({signer_name:name,signature_png:window.sigData,status:'signed',signed_at:new Date().toISOString()}).eq('id',sid);
+      var s=await sb.from('sign_sessions').select('company_id').eq('id',sid).maybeSingle(); companyId=s&&s.data&&s.data.company_id;
+    } }catch(e){}
+    // proceed to Stripe checkout (3-day trial fee now + ongoing from day 3)
+    try{
+      var resp=await fetch(CHECKOUT_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({company_id:companyId,sign_session_id:sid})});
+      var j=await resp.json();
+      if(j&&j.url){ btn.textContent='Continue to payment…'; location.href=j.url; return; }
+    }catch(e){}
+    // fallback: signed confirmation (e.g. before Stripe is connected)
     var st=document.querySelector('.steps'); if(st) st.innerHTML='<span class="on" style="background:#e7f4ea;color:#1e8e3e">✓ Signed</span><span class="dot">→</span><span class="on">2 · Payment</span><span class="dot">→</span><span>3 · Go live</span>';
     btn.textContent='✓ Signed — thank you'; btn.style.background='#1e8e3e'; btn.style.boxShadow='none';
   };
