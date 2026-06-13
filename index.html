@@ -299,7 +299,7 @@
     btn.textContent='Signing…'; btn.disabled=true;
     var companyId=null;
     try{ if(sid){
-      await sb.from('sign_sessions').update({signer_name:name,signature_png:window.sigData,status:'signed',signed_at:new Date().toISOString()}).eq('id',sid);
+      await sb.from('sign_sessions').update({signer_name:name,signature_png:(window.sigDataCropped||window.sigData),status:'signed',signed_at:new Date().toISOString()}).eq('id',sid);
       var s=await sb.from('sign_sessions').select('company_id').eq('id',sid).maybeSingle(); companyId=s&&s.data&&s.data.company_id;
     } }catch(e){}
     // proceed to Stripe checkout (3-day trial fee now + ongoing from day 3)
