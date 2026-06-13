@@ -187,72 +187,60 @@
 
 <script>
   // ========== FULL-SCREEN SIGNING PAD ==========
-  var bigpad=document.getElementById('bigpad'), bighint=document.getElementById('bighint'), bg, bdrawing=false, blast=null, bdrawn=false;
-  var bminx=Infinity, bmaxx=-Infinity, bminy=Infinity, bmaxy=-Infinity;
+  var bigpad=document.getElementById('bigpad'), bighint=document.getElementById('bighint'), bg, drawing=false, last=null, bdrawn=false;
+  var bminx, bmaxx, bminy, bmaxy; // legacy, unused (crop is now a pixel-scan)
   window.sigData=null;
   window.sigDataCropped=null;
 
-  function bsize(preserve){
-    var prev=(preserve && bdrawn) ? bigpad.toDataURL('image/png') : null;
-    var r=bigpad.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
-    bigpad.width=Math.max(1,Math.round(r.width*dpr));
-    bigpad.height=Math.max(1,Math.round(r.height*dpr));
+  function bsize(){
+    var r=bigpad.getBoundingClientRect(), dpr=Math.max(1,window.devicePixelRatio||1);
+    bigpad.width=Math.round(r.width*dpr); bigpad.height=Math.round(r.height*dpr);
     bg=bigpad.getContext('2d');
-    bg.scale(dpr,dpr);
-    bg.lineWidth=3.2; bg.lineCap='round'; bg.lineJoin='round'; bg.strokeStyle='#1f2329';
-    if(prev){ var im=new Image(); im.onload=function(){ bg.drawImage(im,0,0,r.width,r.height); }; im.src=prev; }
+    bg.setTransform(dpr,0,0,dpr,0,0);
+    bg.lineWidth=3; bg.lineCap='round'; bg.lineJoin='round'; bg.strokeStyle='#1f2329';
   }
-  var _padResizeRAF=null;
-  function onPadResize(){
-    if(!document.getElementById('signfull').classList.contains('show')) return;
-    if(_padResizeRAF) cancelAnimationFrame(_padResizeRAF);
-    _padResizeRAF=requestAnimationFrame(function(){ bsize(true); });
-  }
-  window.addEventListener('resize', onPadResize);
-  window.addEventListener('orientationchange', onPadResize);
-
-  function bpos(e){
-    var r=bigpad.getBoundingClientRect(), t=e.touches?e.touches[0]:e;
-    return {x:t.clientX-r.left, y:t.clientY-r.top};
-  }
-
-  function bstart(e){
-    bdrawing=true;
-    blast=bpos(e);
+  // offsetX/offsetY = position inside the canvas content box (border-accurate), unified across mouse/touch/pen.
+  function pStart(e){
+    if(e.button!=null && e.button>0) return;
+    try{ bigpad.setPointerCapture(e.pointerId); }catch(_){}
+    drawing=true; last={x:e.offsetX, y:e.offsetY};
     if(!bdrawn){ bdrawn=true; bighint.style.display='none'; }
     e.preventDefault();
   }
-
-  function bmove(e){
-    if(!bdrawing) return;
-    var p=bpos(e);
-    bg.beginPath();
-    bg.moveTo(blast.x,blast.y);
-    bg.lineTo(p.x,p.y);
-    bg.stroke();
-    bminx=Math.min(bminx,Math.floor(p.x)); bmaxx=Math.max(bmaxx,Math.ceil(p.x));
-    bminy=Math.min(bminy,Math.floor(p.y)); bmaxy=Math.max(bmaxy,Math.ceil(p.y));
-    blast=p;
+  function pMove(e){
+    if(!drawing) return;
+    var x=e.offsetX, y=e.offsetY;
+    bg.beginPath(); bg.moveTo(last.x,last.y); bg.lineTo(x,y); bg.stroke();
+    last.x=x; last.y=y;
     e.preventDefault();
   }
+  function pEnd(){ drawing=false; }
+  bigpad.addEventListener('pointerdown', pStart);
+  bigpad.addEventListener('pointermove', pMove);
+  bigpad.addEventListener('pointerup', pEnd);
+  bigpad.addEventListener('pointercancel', pEnd);
 
-  function bend(){ bdrawing=false; }
-
-  bigpad.addEventListener('mousedown',bstart);
-  bigpad.addEventListener('mousemove',bmove);
-  window.addEventListener('mouseup',bend);
-  bigpad.addEventListener('touchstart',bstart,{passive:false});
-  bigpad.addEventListener('touchmove',bmove,{passive:false});
-  bigpad.addEventListener('touchend',bend);
+  // Re-fit ONLY on a true orientation change, debounced, never mid-stroke (one cheap snapshot, no per-resize work).
+  var _orientT=null;
+  function onOrient(){
+    if(!document.getElementById('signfull').classList.contains('show') || drawing) return;
+    clearTimeout(_orientT);
+    _orientT=setTimeout(function(){
+      if(drawing) return;
+      var prev=bdrawn?bigpad.toDataURL('image/png'):null;
+      bsize();
+      if(prev){ var r=bigpad.getBoundingClientRect(); var im=new Image(); im.onload=function(){ bg.drawImage(im,0,0,r.width,r.height); }; im.src=prev; }
+    },260);
+  }
+  window.addEventListener('orientationchange', onOrient);
 
   window.openSign=function(){
     document.getElementById('signfull').classList.add('show');
     requestAnimationFrame(function(){ requestAnimationFrame(function(){
-      bsize(false);
+      bsize();
       bg.clearRect(0,0,bigpad.width,bigpad.height);
       bdrawn=false;
       bighint.style.display='block';
-      bminx=Infinity; bmaxx=-Infinity; bminy=Infinity; bmaxy=-Infinity;
     }); });
   };
 
